@@ -40,7 +40,7 @@ const cs=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borde
 const e20=chart.addLineSeries({color:'#42a5f5',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
 const e50=chart.addLineSeries({color:'#ffa726',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
 const ema=(d,n)=>{const k=2/(n+1);let p;return d.map(c=>({time:c.time,value:p=p===undefined?c.close:c.close*k+p*(1-k)}))};
-let lines=[];
+let lines=[],tls=[];
 async function load(){
   $('st').textContent='در حال بارگذاری…';
   try{
@@ -61,8 +61,13 @@ async function load(){
 }
 async function levels(){
   lines.forEach(l=>cs.removePriceLine(l));lines=[];
+  tls.forEach(s=>chart.removeSeries(s));tls=[];
   try{
     const j=await (await fetch('levels.json?'+Date.now())).json();
+    (j.trendlines||[]).forEach(t=>{
+      const s=chart.addLineSeries({color:t.type==='support'?'#26a69a':'#ef5350',lineWidth:2,lineStyle:0,priceLineVisible:false,lastValueVisible:false,title:t.label});
+      s.setData([{time:t.from.time,value:t.from.price},{time:t.to.time,value:t.to.price}]);tls.push(s);
+    });
     j.levels.forEach(l=>lines.push(cs.createPriceLine({price:l.price,color:l.type==='support'?'#26a69a':l.type==='resistance'?'#ef5350':'#d4a017',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:l.label||l.type})));
     $('lv').textContent=(j.updated?'سطح‌ها: '+j.updated+' · ':'')+(j.note||'')+' (تحلیل تکنیکال، توصیهٔ مالی نیست)';
   }catch(e){}
