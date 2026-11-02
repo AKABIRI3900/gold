@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نمودار طلا</title>
+<style>
+:root{--bg:#0f1115;--fg:#e6e8ec;--mut:#8a909c;--line:#262a33;--acc:#d4a017}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--fg:#14171c;--mut:#5b616d;--line:#e3e5ea;--acc:#a87b00}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,Tahoma,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:16px;margin:0}
+#price{font-size:20px;font-weight:600;direction:ltr;color:var(--acc)}
+#st{color:var(--mut);font-size:12px;margin-inline-start:auto}
+select,button{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
+#chart{height:calc(100vh - 110px);min-height:320px;direction:ltr}
+#lv{padding:8px 16px;color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>طلا · ۱ ساعته</h1>
+<span id="price">—</span>
+<select id="src"><option value="bn">Binance PAXG (لحظه‌ای)</option><option value="yh">Yahoo GC=F (هر ۱۵ دقیقه)</option></select>
+<button id="rf">به‌روزرسانی</button>
+<span id="st"></span>
+</header>
+<div id="chart"></div>
+<div id="lv"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.3/lightweight-charts.standalone.production.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const dark=!matchMedia('(prefers-color-scheme:light)').matches;
+const chart=LightweightCharts.createChart($('chart'),{
+  layout:{background:{color:dark?'#0f1115':'#ffffff'},textColor:dark?'#c9ccd3':'#333'},
+  grid:{vertLines:{color:dark?'#1c2028':'#eee'},horzLines:{color:dark?'#1c2028':'#eee'}},
+  timeScale:{timeVisible:true,secondsVisible:false},autoSize:true});
+const cs=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'});
+const e20=chart.addLineSeries({color:'#42a5f5',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const e50=chart.addLineSeries({color:'#ffa726',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const ema=(d,n)=>{const k=2/(n+1);let p;return d.map(c=>({time:c.time,value:p=p===undefined?c.close:c.close*k+p*(1-k)}))};
+let lines=[];
+async function load(){
+  $('st').textContent='در حال بارگذاری…';
+  try{
+    let d;
+    if($('src').value==='bn'){
+      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1h&limit=500');
+      d=(await r.json()).map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+    }else{
+      d=await (await fetch('data/gc.json?'+Date.now())).json();
+    }
+    cs.setData(d);e20.setData(ema(d,20));e50.setData(ema(d,50));
+    $('price').textContent=d[d.length-1].close.toFixed(2);
+    $('st').textContent='آخرین به‌روزرسانی: '+new Date().toLocaleTimeString('fa-IR');
+  }catch(e){$('st').textContent='خطا: '+e.message}
+}
+async function levels(){
+  lines.forEach(l=>cs.removePriceLine(l));lines=[];
+  try{
+    const j=await (await fetch('levels.json?'+Date.now())).json();
+    j.levels.forEach(l=>lines.push(cs.createPriceLine({price:l.price,color:l.type==='support'?'#26a69a':l.type==='resistance'?'#ef5350':'#d4a017',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:l.label||l.type})));
+    $('lv').textContent=(j.updated?'سطح‌ها: '+j.updated+' · ':'')+(j.note||'')+' (تحلیل تکنیکال، توصیهٔ مالی نیست)';
+  }catch(e){}
+}
+$('rf').onclick=()=>{load();levels()};$('src').onchange=load;
+load();levels();setInterval(load,60000);
+</script>
+</body>
+</html>
