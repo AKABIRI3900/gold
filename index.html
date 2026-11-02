@@ -45,15 +45,18 @@ async function load(){
   $('st').textContent='در حال بارگذاری…';
   try{
     let d;
+    let from='Yahoo';
     if($('src').value==='bn'){
-      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1h&limit=500');
-      d=(await r.json()).map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
-    }else{
-      d=await (await fetch('data/gc.json?'+Date.now())).json();
+      try{
+        const r=await fetch('https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=1h&limit=500');
+        d=(await r.json()).map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+        from='Binance';
+      }catch(e){}
     }
+    if(!d)d=await (await fetch('data/gc.json?'+Date.now())).json();
     cs.setData(d);e20.setData(ema(d,20));e50.setData(ema(d,50));
     $('price').textContent=d[d.length-1].close.toFixed(2);
-    $('st').textContent='آخرین به‌روزرسانی: '+new Date().toLocaleTimeString('fa-IR');
+    $('st').textContent=from+' · '+new Date().toLocaleTimeString('fa-IR');
   }catch(e){$('st').textContent='خطا: '+e.message}
 }
 async function levels(){
