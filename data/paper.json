@@ -1,1 +1,1 @@
-{"start":1000,"cash":1000,"pos":null,"trades":[],"equity":[{"time":1793617200,"value":1000}],"lastTime":1793613600,"cfg":{"start":1000,"risk":0.01,"maxLev":3,"cost":0.0001,"atrN":14,"rsiN":14,"don":20,"stopATR":1.5,"tpATR":3},"begun":1793617200}
+{"start":1000,"cash":1000,"pos":null,"trades":[],"equity":[{"time":1793617200,"value":1000},{"time":1793620800,"value":1000}],"lastTime":1793617200,"cfg":{"start":1000,"risk":0.01,"maxLev":3,"cost":0.0001,"atrN":14,"rsiN":14,"don":20,"stopATR":1.5,"tpATR":3},"begun":1793617200}
