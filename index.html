@@ -108,32 +108,41 @@ async function levels(){
 
 async function paper(){
   plines.forEach(l=>cs.removePriceLine(l));plines=[];
-  try{
-    const p=await (await fetch('data/paper.json?'+Date.now())).json();
-    const eq=p.equity[p.equity.length-1].value,pl=eq-p.start,w=p.trades.filter(t=>t.pnl>0).length;
-    const cls=pl>=0?'up':'dn';
-    const side=s=>s==='long'?'خرید':'فروش';
-    let pos='بدون پوزیشن باز';
-    if(p.pos){
-      const q=p.pos;pos='پوزیشن باز: '+side(q.side)+' @ '+q.entry+' · حد ضرر '+q.stop+' · هدف '+q.tp;
-      [['ورود',q.entry,'#d4a017'],['حد ضرر',q.stop,'#ef5350'],['هدف',q.tp,'#26a69a']].forEach(([t,pr,c])=>plines.push(cs.createPriceLine({price:pr,color:c,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:t})));
-    }
-    $('pp').innerHTML='';
-    const add=(t,v,c)=>{const s=document.createElement('span');s.append(t+' ');const b=document.createElement('b');b.textContent=v;if(c)b.className=c;s.append(b);$('pp').append(s)};
-    add('حساب آزمایشی (فرضی، پول واقعی نیست):',money(eq));
-    add('سود/زیان:',money(pl)+' ('+(pl/p.start*100).toFixed(2)+'%)',cls);
-    add('معاملات:',p.trades.length+(p.trades.length?' · برد '+Math.round(w/p.trades.length*100)+'%':''));
-    add('',pos);
-    $('tr').textContent=p.trades.slice(-5).reverse().map(t=>`${t.side} ${t.entry}→${t.exit} ${t.reason} ${t.pnl>=0?'+':''}${t.pnl}`).join('\n');
-    markers=[];
-    p.trades.forEach(t=>{
-      const L=t.side==='long';
-      markers.push({time:hr(t.entryTime),position:L?'belowBar':'aboveBar',color:L?'#26a69a':'#ef5350',shape:L?'arrowUp':'arrowDown',text:L?'خرید':'فروش'});
-      markers.push({time:hr(t.exitTime),position:'inBar',color:t.pnl>=0?'#26a69a':'#ef5350',shape:'circle',text:(t.pnl>=0?'+':'')+t.pnl});
-    });
-    if(p.pos){const L=p.pos.side==='long';markers.push({time:hr(p.pos.time),position:L?'belowBar':'aboveBar',color:L?'#26a69a':'#ef5350',shape:L?'arrowUp':'arrowDown',text:L?'خرید':'فروش'})}
-    setMarkers();
-  }catch(e){$('pp').textContent='حساب آزمایشی هنوز شروع نشده'}
+  $('pp').innerHTML='';markers=[];const hist=[];
+  const side=s=>s==='long'?'خرید':'فروش';
+  const accts=[
+    {file:'data/paper.json',name:'ربات',tag:'ربات',up:'#26a69a',dn:'#ef5350',style:1,fixed:false,eq:p=>p.equity[p.equity.length-1].value},
+    {file:'data/claude.json',name:'Claude',tag:'Claude',up:'#29b6f6',dn:'#ab47bc',style:3,fixed:true,eq:p=>p.eq}
+  ];
+  for(const a of accts){
+    try{
+      const p=await (await fetch(a.file+'?'+Date.now())).json();
+      const eq=a.eq(p),pl=eq-p.start,w=p.trades.filter(t=>t.pnl>0).length;
+      const row=document.createElement('div');row.style.cssText='display:flex;flex-wrap:wrap;gap:6px 18px;width:100%';
+      const add=(t,v,c)=>{const s=document.createElement('span');s.append(t+' ');const b=document.createElement('b');b.textContent=v;if(c)b.className=c;s.append(b);row.append(s)};
+      add('حساب '+a.name+' (فرضی):',money(eq));
+      add('سود/زیان:',money(pl)+' ('+(pl/p.start*100).toFixed(2)+'%)',pl>=0?'up':'dn');
+      add('معاملات:',p.trades.length+(p.trades.length?' · برد '+Math.round(w/p.trades.length*100)+'%':''));
+      let pos='بدون پوزیشن باز';
+      if(p.pos){
+        const q=p.pos;pos='پوزیشن باز: '+side(q.side)+' @ '+q.entry+' · حد ضرر '+q.stop+' · هدف '+q.tp;
+        [['ورود',q.entry,'#d4a017'],['ضرر',q.stop,'#ef5350'],['هدف',q.tp,'#26a69a']].forEach(([t,pr,c])=>plines.push(cs.createPriceLine({price:pr,color:c,lineWidth:1,lineStyle:a.style,axisLabelVisible:true,title:a.tag+' '+t})));
+      }
+      add('',pos);$('pp').append(row);
+      if(p.note){const nt=document.createElement('div');nt.style.cssText='width:100%;color:var(--mut);font-size:12px';nt.textContent='دلیل ورود: '+p.note;$('pp').append(nt)}
+      const ec=s=>a.fixed?a.up:(s==='long'?a.up:a.dn);
+      p.trades.forEach(t=>{
+        const L=t.side==='long';
+        markers.push({time:hr(t.entryTime),position:L?'belowBar':'aboveBar',color:ec(t.side),shape:L?'arrowUp':'arrowDown',text:a.tag+' '+side(t.side)});
+        markers.push({time:hr(t.exitTime),position:'inBar',color:t.pnl>=0?a.up:a.dn,shape:'circle',text:a.tag+' '+(t.pnl>=0?'+':'')+t.pnl});
+        hist.push(`${a.tag}: ${side(t.side)} ${t.entry}→${t.exit} (${t.reason}) ${t.pnl>=0?'+':''}${t.pnl}`);
+      });
+      if(p.pos){const L=p.pos.side==='long';markers.push({time:hr(p.pos.time),position:L?'belowBar':'aboveBar',color:ec(p.pos.side),shape:L?'arrowUp':'arrowDown',text:a.tag+' '+side(p.pos.side)})}
+    }catch(e){}
+  }
+  if(!$('pp').children.length)$('pp').textContent='حساب آزمایشی هنوز شروع نشده';
+  $('tr').textContent=hist.slice(-6).reverse().join('\n');
+  setMarkers();
 }
 
 async function watch(){

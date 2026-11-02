@@ -33,5 +33,5 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add data/gc.json data/paper.json data/alerts-state.json data/news.json
+          git add data/gc.json data/paper.json data/claude.json data/alerts-state.json data/news.json
           git diff --cached --quiet || (git commit -m "update gold data" && git push)
