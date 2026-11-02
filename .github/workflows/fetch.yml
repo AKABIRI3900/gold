@@ -16,9 +16,11 @@ jobs:
           curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1mo&interval=1h" -o raw.json
           jq '[.chart.result[0] as $r | range(0; ($r.timestamp|length)) | select($r.indicators.quote[0].close[.] != null) | {time:$r.timestamp[.], open:$r.indicators.quote[0].open[.], high:$r.indicators.quote[0].high[.], low:$r.indicators.quote[0].low[.], close:$r.indicators.quote[0].close[.]}]' raw.json > data/gc.json
           rm raw.json
+      - name: Paper trade
+        run: node paper.js
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add data/gc.json
+          git add data/gc.json data/paper.json
           git diff --cached --quiet || (git commit -m "update gold data" && git push)
