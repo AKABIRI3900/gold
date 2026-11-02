@@ -1,0 +1,6 @@
+{
+  "alerts": [
+    {"id": "gc-above-3929", "symbol": "GC=F", "type": "above", "price": 3929.16, "note": "شکست مقاومت و خط روند نزولی"},
+    {"id": "gc-below-3890", "symbol": "GC=F", "type": "below", "price": 3890, "note": "شکست حمایت"}
+  ]
+}

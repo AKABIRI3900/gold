@@ -20,6 +20,14 @@ select,button{background:var(--bg);color:var(--fg);border:1px solid var(--line);
 .up{color:var(--up)}.dn{color:var(--dn)}
 #tr{padding:0 16px 6px;color:var(--mut);font-size:12px;direction:ltr;text-align:left;white-space:pre-wrap}
 #lv{padding:8px 16px;color:var(--mut);font-size:12px}
+#al{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 16px;font-size:13px;border-bottom:1px solid var(--line)}
+#al:empty{display:none}
+#nw{padding:8px 16px;font-size:13px;border-top:1px solid var(--line)}
+#nw h2{font-size:13px;margin:0 0 6px;color:var(--mut);font-weight:600}
+#nw a{color:var(--fg);text-decoration:none;display:block;padding:3px 0;direction:ltr;text-align:left}
+#nw a:hover{text-decoration:underline}
+#nw small{color:var(--mut)}
+.nw-new{color:var(--acc);font-weight:600}
 </style>
 </head>
 <body>
@@ -30,9 +38,11 @@ select,button{background:var(--bg);color:var(--fg);border:1px solid var(--line);
 <button id="rf">به‌روزرسانی</button>
 <span id="st"></span>
 </header>
+<div id="al"></div>
 <div id="chart"></div>
 <div id="pp"></div>
 <div id="tr"></div>
+<div id="nw"></div>
 <div id="lv"></div>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
@@ -126,8 +136,29 @@ async function paper(){
   }catch(e){$('pp').textContent='حساب آزمایشی هنوز شروع نشده'}
 }
 
-$('rf').onclick=()=>{load();levels();paper()};$('src').onchange=load;
-load().then(paper);levels();setInterval(load,60000);setInterval(paper,300000);
+async function watch(){
+  try{
+    const [a,s,n]=await Promise.all(['alerts.json','data/alerts-state.json','data/news.json'].map(f=>fetch(f+'?'+Date.now()).then(r=>r.json())));
+    $('al').innerHTML='';
+    a.alerts.forEach(r=>{
+      const hit=s.rang[r.id],q=s.prices[r.symbol],sp=document.createElement('span');
+      const lbl=r.symbol+(r.type==='above'?' بالای ':' پایین ')+r.price+' · ';
+      sp.append(lbl);const b=document.createElement('b');
+      if(hit){b.textContent='زنگ خورد در '+hit.price+' ('+new Date(hit.time*1000).toLocaleString('fa-IR')+')';b.className='dn'}
+      else{b.textContent='فعال'+(q?' · فاصله '+Math.abs(q.price-r.price).toFixed(1)+' دلار':'');b.className='up'}
+      sp.append(b);$('al').append(sp);
+    });
+    $('nw').innerHTML='';const h=document.createElement('h2');h.textContent='تیتر خبرها (منبع خارجی Yahoo، تأییدنشده؛ فقط سرنخ)';$('nw').append(h);
+    const day=Date.now()/1000-86400;
+    n.items.filter(i=>/^https?:\/\//.test(i.link)).slice(0,10).forEach(i=>{
+      const l=document.createElement('a');l.href=i.link;l.target='_blank';l.rel='noopener noreferrer';
+      if(i.first>day){const t=document.createElement('span');t.className='nw-new';t.textContent='جدید ';l.append(t)}
+      l.append(i.title+' ');const m=document.createElement('small');m.textContent='· '+i.sym+' · '+new Date(i.time*1000).toLocaleDateString('en-GB');l.append(m);$('nw').append(l);
+    });
+  }catch(e){}
+}
+$('rf').onclick=()=>{load();levels();paper();watch()};$('src').onchange=load;
+load().then(paper);levels();watch();setInterval(load,60000);setInterval(()=>{paper();watch()},300000);
 </script>
 </body>
 </html>
